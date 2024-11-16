@@ -5,12 +5,16 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.bumptech.glide.Glide
+import android.widget.Toast
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.example.tickets.R
 import com.example.tickets.adapter.OfferListAdapter
 import com.example.tickets.databinding.FragmentOfferListBinding
 import com.example.tickets.model.entity.Offer
 import com.example.tickets.model.network.ApiClient
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -32,6 +36,8 @@ class OfferListFragment : Fragment() {
         OfferListAdapter()
     }
 
+    private val viewModel: OfferListViewModel by viewModels()
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -44,25 +50,16 @@ class OfferListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupUI()
+        viewModel.offerList.observe(viewLifecycleOwner) {
+            adapter.submitList(it)
+            list = it.toMutableList()
+        }
 
-        ApiClient.client.getList().enqueue(object : Callback<List<Offer>> {
-            override fun onResponse(p0: Call<List<Offer>>, p1: Response<List<Offer>>) {
-                println("RetrofitRequest: ${p1.body()}")
-
-                p1.body()?.let { offers ->
-                    list = offers.toMutableList()
-                }
-
-                adapter.submitList(list)
+        lifecycleScope.launch {
+            viewModel.errorMessage.collectLatest { message ->
+               Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
             }
-
-            override fun onFailure(p0: Call<List<Offer>>, p1: Throwable) {
-                println("RetrofitRequest: ${p1}")
-            }
-
-        })
-
-//        adapter.setItems(FakeService.offerList)
+        }
     }
 
     private fun setupUI() {
